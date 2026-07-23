@@ -151,11 +151,15 @@ async function loginUserController(req, res) {
 
 async function logoutUserController(req, res) {
     try {
-        const token=req.cookies.token
-        if(token){
-            await TokenBlacklist.create({token})
+        const token = req.cookies.token;
+        if (token) {
+            await TokenBlacklist.create({ token });
         }
-        res.clearCookie("token")
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+        });
         return res.status(200).json({
             message: "User logged out successfully",
         });

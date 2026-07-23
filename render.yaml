@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: interview-backend
+    env: node
+    root: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+      - key: JWT_SECRET
+      - key: GEMINI_API_KEY
+      - key: CORS_ORIGIN
+      - key: NODE_ENV
+
+  - type: static-site
+    name: interview-frontend
+    env: static
+    root: Frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
