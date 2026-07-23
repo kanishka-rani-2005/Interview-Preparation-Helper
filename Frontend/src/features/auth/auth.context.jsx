@@ -6,7 +6,7 @@ export const AuthContext = createContext() //global container where authenticati
 export const AuthProvider = ({ children }) => { 
 
     const [user, setUser] = useState(null) //no one is logged in.
-    const [loading, setLoading] = useState(false) 
+    const [loading, setLoading] = useState(true) // wait until the session check finishes
 
 
     return (

@@ -31,6 +31,46 @@ const interviewReportSchema = z.object({
     })).describe("Day-by-day study and practice plan")
 });
 
+async function generateResumePdf({ resumeText, jobDescription, selfDescription }) {
+    const html = `
+        <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 24px; color: #1f2937; }
+                    h1 { font-size: 24px; margin-bottom: 8px; }
+                    h2 { font-size: 16px; margin-top: 20px; }
+                    .section { margin-bottom: 18px; }
+                    .label { font-weight: bold; margin-bottom: 6px; }
+                    p { white-space: pre-wrap; line-height: 1.5; }
+                </style>
+            </head>
+            <body>
+                <h1>Interview Resume Summary</h1>
+                <div class="section">
+                    <div class="label">Job Description</div>
+                    <p>${(jobDescription || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                </div>
+                <div class="section">
+                    <div class="label">Self Description</div>
+                    <p>${(selfDescription || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                </div>
+                <div class="section">
+                    <div class="label">Resume Text</div>
+                    <p>${(resumeText || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                </div>
+            </body>
+        </html>
+    `;
+
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    await browser.close();
+
+    return pdfBuffer;
+}
+
 async function generateInterviewReport({ resumeText, selfDescription, jobDescription }) {
     const prompt = `
 You are a Senior Staff Software Engineer and Interviewer at Google.
@@ -107,7 +147,7 @@ ${jobDescription}
                                 },
                                 required: ["day", "focus", "tasks"]
                             }
-                        }
+                        },
                     },
                     required: ["title", "matchScore", "technicalQuestions", "behavioralQuestions", "skillGaps", "preparationPlan"]
                 }
@@ -124,6 +164,4 @@ ${jobDescription}
     }
 }
 
-
-
-module.exports = { generateInterviewReport };
+module.exports = { generateInterviewReport, generateResumePdf };

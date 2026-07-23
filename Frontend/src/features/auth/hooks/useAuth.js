@@ -12,9 +12,12 @@ export const useAuth = () => {
         setLoading(true)
         try {
             const data = await login({ email, password })
-            setUser(data.user)
+            const loggedInUser = data?.user ?? null
+            setUser(loggedInUser)
+            return loggedInUser
         } catch (err) {
- console.log(err)
+            console.log(err)
+            return null
         } finally {
             setLoading(false)
         }
@@ -24,9 +27,12 @@ export const useAuth = () => {
         setLoading(true)
         try {
             const data = await register({ username, email, password })
-            setUser(data.user)
+            const registeredUser = data?.user ?? null
+            setUser(registeredUser)
+            return registeredUser
         } catch (err) {
- console.log(err)
+            console.log(err)
+            return null
         } finally {
             setLoading(false)
         }
@@ -35,11 +41,12 @@ export const useAuth = () => {
     const handleLogout = async () => {
         setLoading(true)
         try {
-            const data = await logout()
+            await logout()
             setUser(null)
+            return true
         } catch (err) {
             console.log(err)
-
+            return false
         } finally {
             setLoading(false)
         }
@@ -51,10 +58,11 @@ export const useAuth = () => {
             setLoading(true)
             try {
                 const data = await getMe()
-                setUser(data.user)
+                setUser(data?.user ?? null)
             } catch (err) {
-                 console.log(err)
-             } finally {
+                console.log(err)
+                setUser(null)
+            } finally {
                 setLoading(false)
             }
         }
