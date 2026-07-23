@@ -44,10 +44,16 @@ async function registerUserController(req, res) {
             {
                 id: user._id,
                 role: user.role,
-            }
+            },
+            process.env.JWT_SECRET
         );
         
-        res.cookie("token",token)
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+        });
+        
         // Remove password from response
         const userResponse = user.toObject();
         delete userResponse.password;
@@ -113,7 +119,11 @@ async function loginUserController(req, res) {
         );
 
         // Store token in cookie
-        res.cookie("token", token);
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+        });
 
         // Remove password
         const userResponse = user.toObject();
