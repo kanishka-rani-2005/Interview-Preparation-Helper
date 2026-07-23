@@ -1,0 +1,99 @@
+name: Build & Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      ########################################
+      # Backend
+      ########################################
+
+      - name: Create Backend .env
+        working-directory: Backend
+        run: |
+          cat <<EOF > .env
+          PORT=${{ secrets.PORT }}
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+          EOF
+
+      - name: Install Backend Dependencies
+        working-directory: Backend
+        run: npm ci
+
+      ########################################
+      # Frontend
+      ########################################
+
+      - name: Create Frontend .env
+        working-directory: Frontend
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
+
+      - name: Install Frontend Dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: Frontend
+        run: npm run build
+
+      ########################################
+      # Deploy to EC2
+      ########################################
+
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/GenAIFullStack
+
+            git pull origin main
+
+            # Backend
+            cd Backend
+            npm ci
+
+            cat > .env <<EOF
+            PORT=${{ secrets.PORT }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+            EOF
+
+            pm2 restart backend || pm2 start server.js --name backend
+
+            # Frontend
+            cd ../Frontend
+            npm ci
+
+            cat > .env <<EOF
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            EOF
+
+            npm run build
+
+            sudo rm -rf /var/www/html/*
+            sudo cp -r dist/* /var/www/html/
+
+            sudo systemctl reload nginx
