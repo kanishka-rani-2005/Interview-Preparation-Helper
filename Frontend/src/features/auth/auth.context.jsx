@@ -1,18 +1,31 @@
-import { createContext,useState } from "react";
+import { createContext, useEffect, useState } from "react";
+import { getMe } from "./services/auth.api";
 
-export const AuthContext = createContext() //global container where authentication data will be stored.
+export const AuthContext = createContext();
 
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-export const AuthProvider = ({ children }) => { 
+    useEffect(() => {
+        const bootstrapAuth = async () => {
+            try {
+                const data = await getMe();
+                setUser(data?.user ?? null);
+            } catch (err) {
+                console.log(err);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const [user, setUser] = useState(null) //no one is logged in.
-    const [loading, setLoading] = useState(true) // wait until the session check finishes
-
+        bootstrapAuth();
+    }, []);
 
     return (
-        <AuthContext.Provider value={{user,setUser,loading,setLoading}} >
+        <AuthContext.Provider value={{ user, setUser, loading, setLoading }}>
             {children}
         </AuthContext.Provider>
-    )
-    
-}
+    );
+};
