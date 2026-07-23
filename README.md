@@ -6,6 +6,15 @@ This repository contains a full-stack interview preparation app with:
 - `Backend/`: Node.js + Express API
 - `Frontend/`: React + Vite SPA
 
+## What this project does
+
+This project helps job applicants prepare for interviews by providing:
+- User registration and login with JWT-based authentication
+- Resume upload and interview report generation
+- AI-powered interview report creation using Gemini/OpenAI
+- Secure backend API and protected frontend routes
+- User profile access, report history, and PDF generation
+
 ## Deployed App
 
 - Live link: https://interview-preparation-zgty.onrender.com/login
