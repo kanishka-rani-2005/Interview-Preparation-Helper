@@ -1,8 +1,14 @@
 # InterView Helper
 
+**Author:** KANISHKA RANI
+
 This repository contains a full-stack interview preparation app with:
 - `Backend/`: Node.js + Express API
 - `Frontend/`: React + Vite SPA
+
+## Deployed App
+
+- Live link: https://interview-preparation-zgty.onrender.com/login
 
 ## Render Deployment
 
