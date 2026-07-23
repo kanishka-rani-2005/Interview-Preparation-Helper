@@ -17,7 +17,7 @@ This project helps job applicants prepare for interviews by providing:
 
 ## Deployed App
 
-- Live link: https://interview-preparation-zgty.onrender.com/login
+- Live link: https://interview-preparation-zgty.onrender.com
 
 ## Render Deployment
 
