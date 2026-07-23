@@ -1,4 +1,4 @@
-name: Build & Deploy to AWS EC2
+name: Deploy to AWS
 
 on:
   push:
@@ -6,94 +6,93 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+
+  build-and-push:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          node-version: 22
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      ########################################
-      # Backend
-      ########################################
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Backend Image
+        run: |
+          docker build \
+          -t ${{ secrets.AWS_ECR_LOGIN_URI }}/${{ secrets.ECR_REPOSITORY_NAME }}:backend-latest \
+          ./Backend
+
+      - name: Push Backend Image
+        run: |
+          docker push \
+          ${{ secrets.AWS_ECR_LOGIN_URI }}/${{ secrets.ECR_REPOSITORY_NAME }}:backend-latest
+
+      - name: Build Frontend Image
+        run: |
+          docker build \
+          --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} \
+          -t ${{ secrets.AWS_ECR_LOGIN_URI }}/${{ secrets.ECR_REPOSITORY_NAME }}:frontend-latest \
+          ./Frontend
+
+      - name: Push Frontend Image
+        run: |
+          docker push \
+          ${{ secrets.AWS_ECR_LOGIN_URI }}/${{ secrets.ECR_REPOSITORY_NAME }}:frontend-latest
+
+  deploy:
+
+    needs: build-and-push
+
+    runs-on: self-hosted
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Create Backend .env
-        working-directory: Backend
         run: |
-          cat <<EOF > .env
-          PORT=${{ secrets.PORT }}
+          cat <<EOF > Backend/.env
           MONGO_URI=${{ secrets.MONGO_URI }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+          PORT=${{ secrets.PORT }}
           EOF
 
-      - name: Install Backend Dependencies
-        working-directory: Backend
-        run: npm ci
-
-      ########################################
-      # Frontend
-      ########################################
-
-      - name: Create Frontend .env
-        working-directory: Frontend
+      - name: Create Compose Environment
         run: |
-          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
+          cat <<EOF > .env
+          AWS_ECR_LOGIN_URI=${{ secrets.AWS_ECR_LOGIN_URI }}
+          ECR_REPOSITORY_NAME=${{ secrets.ECR_REPOSITORY_NAME }}
+          EOF
 
-      - name: Install Frontend Dependencies
-        working-directory: Frontend
-        run: npm ci
+      - name: Stop Existing Containers
+        run: docker compose down || true
 
-      - name: Build Frontend
-        working-directory: Frontend
-        run: npm run build
+      - name: Pull Latest Images
+        run: docker compose pull
 
-      ########################################
-      # Deploy to EC2
-      ########################################
-
-      - name: Deploy to AWS EC2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/GenAIFullStack
-
-            git pull origin main
-
-            # Backend
-            cd Backend
-            npm ci
-
-            cat > .env <<EOF
-            PORT=${{ secrets.PORT }}
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-            CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
-            EOF
-
-            pm2 restart backend || pm2 start server.js --name backend
-
-            # Frontend
-            cd ../Frontend
-            npm ci
-
-            cat > .env <<EOF
-            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
-            EOF
-
-            npm run build
-
-            sudo rm -rf /var/www/html/*
-            sudo cp -r dist/* /var/www/html/
-
-            sudo systemctl reload nginx
+      - name: Start Containers
+        run: docker compose up -d

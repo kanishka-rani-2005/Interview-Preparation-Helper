@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+
+  backend:
+    image: ${AWS_ECR_LOGIN_URI}/${ECR_REPOSITORY_NAME}:backend-latest
+    container_name: interview_backend
+
+    restart: always
+
+    ports:
+      - "5000:5000"
+
+    env_file:
+      - ./Backend/.env
+
+  frontend:
+    image: ${AWS_ECR_LOGIN_URI}/${ECR_REPOSITORY_NAME}:frontend-latest
+    container_name: interview_frontend
+
+    restart: always
+
+    ports:
+      - "80:80"
+
+    depends_on:
+      - backend
